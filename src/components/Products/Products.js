@@ -1,32 +1,69 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ListItem from "./ListItems/ListItem";
 import Loader from "../UI/Loader"
+import axios from "axios"
 
-const Products = () => {
-    const [items, setItems] = useState([
-        {
-            id: 1,
-            title: "Item1",
-            price: 699,
-            discountedPrice: 490,
-            thumbnail: "dress1.jpeg"
-        },
-        {
-            id: 2,
-            title: "Item2",
-            price: 1599,
-            discountedPrice: 890,
-            thumbnail: "dress22.jpeg"
-        },
-        {
-            id: 3,
-            title: "Item3",
-            price: 1299,
-            discountedPrice: 999,
-            thumbnail: "dress3.jpeg"
+const Products = ( {onAddItem , onRemoveItem, eventState} ) => {
+    const [items, setItems] = useState([])
+    const [loader,setLoader] = useState(true)
 
+    useEffect(() => {
+        async function fetchItems() {
+            try{
+                const response = await axios.get(`https://ecomm-9a6ac-default-rtdb.firebaseio.com/items.json`)
+                const data = response.data
+                const transformedData = data.map((item, index) => {
+                    return {
+                        ...item,
+                        quantity: 0,
+                        id: index
+                    }
+                })
+                setLoader(false)
+                setItems(transformedData)
+            }
+            catch(error){
+                setLoader(false)
+                console.log(error)
+                alert("Some error occurred")
+            }
+            finally{
+                setLoader(false)
+            }
         }
-    ])
+        fetchItems();
+    }, [])
+
+    useEffect(()=>{
+        if(eventState.id>-1){
+            if(eventState.type === 1){
+                handleAddItem(eventState.id)
+            }
+            else if(eventState.type === -1){
+                handleRemoveItem(eventState.id)
+            }
+        }
+    },[eventState])
+
+    const handleAddItem = id =>{
+        let data = [...items]
+        let index = data.findIndex(item => item.id === id)
+        data[index].quantity += 1
+        setItems([...data])
+        onAddItem(data[index])
+    }
+    
+    const handleRemoveItem = id =>{
+        let data = [...items]
+        let index = data.findIndex(item => item.id === id)
+        if(data[index].quantity !== 0){
+            data[index].quantity -= 1
+            setItems([...data])
+            onRemoveItem(data[index])
+        }
+    }
+
+
     return (
         <>
             <div className={"product-list"}>
@@ -38,15 +75,14 @@ const Products = () => {
                 <ListItem data={items[2]} /> */}
                     {
                         items.map(item => {
-                            console.log(item)
-                            return (<ListItem data={item} />)
+                            return (<ListItem onAdd={handleAddItem} onRemove={handleRemoveItem} key={item.id} data={item}/>)
                         })
 
                     }
 
                 </div>
             </div>
-            <Loader />
+            {loader && <Loader/>}
         </>
     )
 }
